@@ -1,0 +1,6 @@
+balance = int(input("Amount owed: $"))
+apr = float(input("APR: "))
+monthly_rate = round(apr/12, 3)
+print(f"Monthly percentage rate: {monthly_rate}")
+min_payment = round(balance * apr / 100 / 12, 2)
+print(f"Minimum payment: ${min_payment}")
