@@ -6,7 +6,4 @@ def lab5c():
         if pls == "please":
             print("Program complete")
             break
-
-
-
 lab5c()
