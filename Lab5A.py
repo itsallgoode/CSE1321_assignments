@@ -1,14 +1,13 @@
 def lab5a():
 
     print("Please enter 10 numbers and this program will display the largest.")
-
+    nums = []
     for i in range(1, 11):
         num = int(input(f"Please enter number {i}: "))
-        if i == 1:
-            largest = num
-        elif num > largest:
-            largest = num
+        nums.append(num)
+
+
     print(" ")
-    print(f"The largest number was {largest}")
+    print(f"The largest number was {sorted(nums)[-1]}")
 
 lab5a()
