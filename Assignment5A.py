@@ -1,128 +1,136 @@
 import pygame
-import random
-import time
+import sys
 
-# Initialize Pygame
+# The sound isn't playing at the correct speed but every file i try does the same so I left it as is
+
 pygame.init()
+screen = pygame.display.set_mode((800, 600))
 
-# Set up the game window
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
-window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
-pygame.display.set_caption("Maze Game")
 
-# Define colors
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
-RED = (255, 0, 0)
+black = (0, 0, 0)
+white = (255, 255, 255)
 
-# Define maze parameters
-CELL_SIZE = 20
-MAZE_WIDTH = WINDOW_WIDTH // CELL_SIZE
-MAZE_HEIGHT = WINDOW_HEIGHT // CELL_SIZE
 
-# Define player and treasure positions
-player_x = 1
-player_y = 1
-treasure_x = MAZE_WIDTH - 2
-treasure_y = MAZE_HEIGHT - 2
+maze_width, maze_height = 16, 12 
+cell_size = 800 // maze_width
 
-# Define maze layout
-maze = [[1] * MAZE_WIDTH for _ in range(MAZE_HEIGHT)]
-maze[player_y][player_x] = 0
-maze[treasure_y][treasure_x] = 0
 
-# Generate maze
-def generate_maze():
-    visited = [[False] * MAZE_WIDTH for _ in range(MAZE_HEIGHT)]
-    stack = [(player_y, player_x)]
-    visited[player_y][player_x] = True
+font = pygame.font.Font(None, 36)
+initial_timer = 30
+timer = initial_timer
+timer_started = False
 
-    while stack:
-        current_y, current_x = stack[-1]
-        neighbors = []
+pygame.mixer.init()
+treasure_sound = pygame.mixer.Sound("QL7TEGT-applause-cheering.mp3")
+start_text = font.render("Start", True, black)
+treasure = pygame.image.load("treasure.png").convert_alpha()
+treasure_scaled = pygame.transform.scale(treasure, (cell_size, cell_size))
 
-        # Check neighbors
-        if current_y > 1 and not visited[current_y - 2][current_x]:
-            neighbors.append((current_y - 2, current_x))
-        if current_y < MAZE_HEIGHT - 2 and not visited[current_y + 2][current_x]:
-            neighbors.append((current_y + 2, current_x))
-        if current_x > 1 and not visited[current_y][current_x - 2]:
-            neighbors.append((current_y, current_x - 2))
-        if current_x < MAZE_WIDTH - 2 and not visited[current_y][current_x + 2]:
-            neighbors.append((current_y, current_x + 2))
+player_image = pygame.image.load("player.png").convert_alpha()
+player_scaled = pygame.transform.scale(player_image, (cell_size, cell_size))
 
-        if neighbors:
-            next_y, next_x = random.choice(neighbors)
-            stack.append((next_y, next_x))
-            visited[next_y][next_x] = True
-            maze[current_y + (next_y - current_y) // 2][current_x + (next_x - current_x) // 2] = 0
-        else:
-            stack.pop()
+player_pos = [cell_size, cell_size]
+player_speed = cell_size // 2
 
-generate_maze()
 
-# Load sound effect
-treasure_sound = pygame.mixer.Sound("treasure.wav")
+maze = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [2, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 1],
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1],
+    [1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1],
+    [1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1],
+    [1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 3, 1],
+]
 
-# Game loop
+def draw_maze():
+    for y in range(maze_height):
+        for x in range(maze_width):
+            if maze[y][x] == 1:
+                pygame.draw.rect(screen, black, (x * cell_size, y * cell_size, cell_size, cell_size))
+            elif maze[y][x] == 3:
+                screen.blit(treasure_scaled, (x * cell_size, y * cell_size))
+            elif maze[y][x] == 2:
+                screen.blit(start_text, (x * cell_size, y * cell_size))
+def draw_timer():
+    timer_text = font.render(f"Time: {round(timer, 0)}", True, white)
+    screen.blit(timer_text, (10, 10))
+
+def can_move(new_pos):
+    new_rect = pygame.Rect(new_pos[0], new_pos[1], cell_size, cell_size)
+    for y in range(maze_height):
+        for x in range(maze_width):
+            if maze[y][x] == 1:
+                wall_rect = pygame.Rect(x * cell_size, y * cell_size, cell_size, cell_size)
+                if new_rect.colliderect(wall_rect):
+                    return False
+    return True
+
+def modify_maze():
+    maze[10][13] = 1
+    maze[6][14] = 0
+    maze[7][14] = 0
+    maze[11][14] = 0
+
 running = True
-treasure_found = False
-start_time = None
+clock = pygame.time.Clock()
+
 while running:
-    # Handle events
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.KEYDOWN:
+            new_pos = player_pos.copy()
+            if event.key == pygame.K_w and new_pos[1] > 0:
+                new_pos[1] -= player_speed
+            if event.key == pygame.K_s and new_pos[1] < screen.get_height() - cell_size:
+                new_pos[1] += player_speed
+            if event.key == pygame.K_d and new_pos[0] < screen.get_width() - cell_size:
+                new_pos[0] += player_speed
+            if event.key == pygame.K_a and new_pos[0] > 0:
+                new_pos[0] -= player_speed
 
-    # Move player
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_UP] and maze[player_y - 1][player_x] == 0:
-        player_y -= 1
-    if keys[pygame.K_DOWN] and maze[player_y + 1][player_x] == 0:
-        player_y += 1
-    if keys[pygame.K_LEFT] and maze[player_y][player_x - 1] == 0:
-        player_x -= 1
-    if keys[pygame.K_RIGHT] and maze[player_y][player_x + 1] == 0:
-        player_x += 1
+            if can_move(new_pos):
+                player_pos = new_pos
 
-    # Check for treasure collision
-    if player_x == treasure_x and player_y == treasure_y:
-        treasure_found = True
+            if event.key == pygame.K_r:
+                player_pos = [cell_size + 1, cell_size + 1]
+
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            sys.exit(0)
+
+    treasure_rect = pygame.Rect(14 * cell_size, 11 * cell_size, cell_size, cell_size)
+    player_rect = pygame.Rect(player_pos[0], player_pos[1], cell_size, cell_size)
+    if player_rect.colliderect(treasure_rect):
+        modify_maze()
+        timer_started = True
+        timer = initial_timer
         treasure_sound.play()
-        generate_maze()
-        start_time = time.time()
 
-    # Draw maze
-    window.fill(BLACK)
-    for y in range(MAZE_HEIGHT):
-        for x in range(MAZE_WIDTH):
-            if maze[y][x] == 1:
-                pygame.draw.rect(window, GREEN, (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
-            elif treasure_found and (x, y) != (player_x, player_y):
-                pygame.draw.rect(window, WHITE, (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
-            else:
-                pygame.draw.rect(window, WHITE, (x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE), 1)
-
-    # Draw player and treasure
-    if not treasure_found:
-        pygame.draw.rect(window, RED, (treasure_x * CELL_SIZE, treasure_y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
-    pygame.draw.rect(window, RED, (player_x * CELL_SIZE, player_y * CELL_SIZE, CELL_SIZE, CELL_SIZE))
-
-    # Draw timer
-    if treasure_found:
-        elapsed_time = int(time.time() - start_time)
-        remaining_time = 30 - elapsed_time
-        if remaining_time <= 0:
+    if timer_started:
+        timer -= clock.get_time() / 1000  
+        if timer <= 0:
+            print("Game over.")
             running = False
-        font = pygame.font.Font(None, 36)
-        text = font.render(f"Time: {remaining_time}", True, WHITE)
-        window.blit(text, (10, 10))
 
-    # Update display
+    start_rect = pygame.Rect(cell_size, cell_size, cell_size, cell_size)
+    if player_rect.colliderect(start_rect) and timer_started:
+        print("You win!")
+        running = False
+
+    screen.fill(white)
+    draw_maze()
+    draw_timer()
+    screen.blit(player_scaled, player_pos)
     pygame.display.flip()
+    clock.tick(60)
 
-# Quit Pygame
 pygame.quit()
+sys.exit()
+
 
