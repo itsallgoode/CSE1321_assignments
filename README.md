@@ -1,2 +1,1 @@
-"# CSE1321_assignments" 
-These are all my python assignments for my CSE1321 class and lab at KSU.
+These are my assignments for CSE1321 at Kennesaw State University
